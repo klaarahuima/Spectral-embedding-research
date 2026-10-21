@@ -1,5 +1,4 @@
 import networkx as nx
-import numpy as np
 import graphfunctions as fun
 import matplotlib.pyplot as plt
 

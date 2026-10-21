@@ -1,11 +1,7 @@
 import networkx as nx
 import numpy as np
 import graphfunctions as fun
-import duplicatingfunctions as dup
-import knpaths as path
 from graphfunctions import get_adj_eigenvalues, get_adjacency_eigenvectors
-import circulants as cry
-import removingedges as rem
 
 """
 THIS IS THE FILE I GENERATE THE RANDOM GRAPHS WITH.

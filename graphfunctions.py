@@ -1,9 +1,6 @@
-import scipy
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
-from holoviews.plotting.bokeh.styles import font_size, angle
-from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import eigsh
 
 """
@@ -12,13 +9,10 @@ You don't have to modify this code while running, the files that actually handle
 If, however, you want to modify what the functions are doing (how many eigenvectors you calculate, 
 what kind of random distributions you use for generating points around the circumference of the circle, change the title of the graphs, etc.),
 you should modify these functions and recompile the file your using the simulate the graphs (otherwise the edits will not be taken into account
-when running). I tried to annotate all the variables clearly. If some function calls are confusing, I suggest looking up the documentation
-for scipy / numpy libraries that I reference.
-If you want to add functions that can be called from the main simulating file, you can also add them here, and they won't clutter your main file. :)
-"""
+when running). """
 
 
-
+# BASIC GRAPH TOOLS ------------------------------------------
 
 def draw_graph(G): #with networkx
     """
@@ -32,7 +26,7 @@ def draw_graph(G): #with networkx
     plt.show()
 
 
-
+# EIGENVECTOR TOOLS -------------------------------------------
 
 def get_eigenvectors(nx_graph):
     """
@@ -50,9 +44,6 @@ def get_eigenvectors(nx_graph):
     second_eigenvector = eigenvectors[:,1]
     third_eigenvector = eigenvectors[:,2]
     return second_eigenvector, third_eigenvector, eigenvalues
-
-
-
 
 def add_eigenvectors(nx_graph, a = 1, l = 1):
     """
@@ -79,8 +70,6 @@ def add_eigenvectors(nx_graph, a = 1, l = 1):
     return 1
 
 
-
-
 def get_adjacency_eigenvectors(nx_graph):
     """
     get_adjacency_eigenvectors calculates the 2nd and 3rd adjacency eigenvector and their associated eigenvalues
@@ -96,9 +85,7 @@ def get_adjacency_eigenvectors(nx_graph):
     return second_eigenvector, third_eigenvector, eigenvalues
 
 
-
-
-def get_adj_eigenvalues(nx_graph):
+def get_adj_eigenvalues(nx_graph, k:int = 10):
     """
     get adj_eigenvalues uses the same method (eigsh) as above but only returns the eigenvalues
 
@@ -106,9 +93,8 @@ def get_adj_eigenvalues(nx_graph):
     Output: list of 10 largest eigenvalues (number can be changed)
     """
     A = nx.adjacency_matrix(nx_graph).toarray().astype(float)
-    eigenvalues, _ = eigsh(A, k=10, which='LA') # k is number of eigenvalues, 'LA' means largest something..
+    eigenvalues, _ = eigsh(A, k=k, which='LA') # k is number of eigenvalues, 'LA' means largest something..
     return eigenvalues
-
 
 def get_lap_eigenvalues(nx_graph):
     """
@@ -142,26 +128,35 @@ def eigenvector_polar_coordinates(eigenvector_tuple):
         radial_angles.append(theta) # append the calculated angle
     return radial_angles, distances
 
-def plot_distances(distances):
+# previously cry.split_vectors(G, num_circulant)
+def split_vectors(G, num_circulant):
     """
-    plot_distances creates a plot of the distance of points from the origin
+    The function splits the 2nd and 3rd laplacian eigenvector of a networkx graph G into 2 parts:
+    One with vertices in 1st quadrant, and one with vertices in remaining quadrants.
+    The function ignores vertices on the boundary of the 1st quadrant to minimize the deviations it has on the vertices there.
 
-    Input: list of distances of vertices (not necessarily in increasing order)
-    Output: creates plot of graph such that
-                x-axis: vertex index
-                y-axis: distance from origin
+    I used this to derive the constants of the sinusoidal functions that describe the eigenvectors of the
+    ideal random circulant graph model.
+
+    Args:
+        G: graph
+        num_circulant: number of vertices in 1st quadrant
+
+    Returns: 4 vectors:
+            s: 2nd laplacian eigenvector, 1st quadrant
+            p: 2nd laplacian eigenvector, 2nd-4th quadrant
+            r: 3rd laplacian eigenvector, 1st quadrant
+            q: 3rd laplacian eigenvector, 2nd-4th quadrant
+
     """
-    indices = np.arange(len(distances))
+    s = G.graph['second_lap'][2:num_circulant-2]
+    p = G.graph['second_lap'][num_circulant:]
+    r = G.graph['third_lap'][2:num_circulant-2]
+    q = G.graph['third_lap'][num_circulant:]
+    return (s, p ,r, q)
 
-    plt.figure(figsize=(8, 5)) # figure size
-    plt.plot(indices, distances, marker='o', linestyle='-', label="Distances") # creates plot
-    plt.title("Distances from Origin")
-    plt.xlabel("Index")
-    plt.ylabel("Distance")
-    plt.ylim(0, max(distances) * 1.1)  # Ensures the y-axis starts from 0
-    plt.grid(True) # can change grid properties here
-    plt.legend()
-    plt.show()
+
+# METRICS / ERROR FUNCTIONS -----------------------------
 
 def count_inversions(normalized_angles):
     """
@@ -235,120 +230,8 @@ def error(nx_graph, type = "lap"):
     return err
 
 
-"""
 
-Old version of a function used to calculate how many inversions were in each quadrant of the graph. Not sure if it works anymore.
-Feel free to use as a starting point if needed.
-
-def plot_inversions(nx_graph):
-    second, third = get_eigenvectors(nx_graph)
-    rads, _ = eigenvector_radial_angles((second, third))
-    _, inversions = count_wrong_positions(rads)
-    order = nx_graph.order()
-    n = len(inversions)
-    q = order/5
-    bins = [0, q, 2*q, 3*q, 4*q, order]  # Adjust the bins as needed
-
-    # Plot the histogram
-    plt.hist(inversions, bins=bins, edgecolor='black', alpha=0.7)
-
-    # Add labels and title
-    plt.xlabel('Ranges')
-    plt.ylabel('Count')
-    plt.title('Number Distribution Across Ranges')
-
-    # Show the plot
-    plt.show()
-"""
-
-
-def plot_unscaled_coordinates(coordinates):
-    """
-    Plots 2 vectors (with x and y coordinates, respectively) in the 2d-plane.
-    Used to visualise the embedding of the 2nd and 3rd eigenvectors (or any 2 eigenvectors, for that matter.)
-
-    Input: 2 vectors of coordinates (can input eigenvectors directly)
-    Output: draws the emebdding
-    """
-    x, y = coordinates
-    plt.figure(figsize=(8, 8))  # Ensure square figure
-
-    # this part below is for labelling the vertices in the plot, if interested
-    # I used it for particularly large graphs to track, for example, every 1000th vertex (to see where the quadrant fall)
-    # uncomment to use :)
-    """
-    for i, (xi, yi) in enumerate(zip(x, y), start=1): # Start labeling from 1
-        if (i == 1) or (i % 1000 == 0): # i % 1000 == 0 says we visualize every 1000th vertex. You can modify this by changing the value after %.
-            plt.text(xi, yi, str(i), fontsize=10, ha='right', va='bottom', color='black') # choosing text display options (look up plt.text if needed)
-    """
-
-    # Add labels and title
-    plt.title("Model embedding", fontsize = 19) # can edit properties of title
-    split_idx = int(len(x) * 2 / 5) # splitting points into 1st quadrant (2/5 of all vertices) and the rest of the graph
-
-    # Scatter first 2/5 of the points in red
-    plt.scatter(x[:split_idx], y[:split_idx], s=10, color='red', label="First quadrant")
-
-    # Scatter the remaining points in blue
-    plt.scatter(x[split_idx:], y[split_idx:], s=10, color='blue', label="Remaining vertices")
-
-    x_lim = max(abs(min(x)), abs(max(x)))  # Maximum absolute x value
-    y_lim = max(abs(min(y)), abs(max(y)))  # Maximum absolute y value
-
-    # Ensure equal aspect ratio and scaling
-    plt.axis('equal')  # Better than 'equal' for auto-adjusting limits
-    plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5) # parameters of grid
-    plt.legend(fontsize = 14, loc = "upper left") # legend
-    plt.scatter(0, 0, color="black", label="(0, 0)", zorder=0.4) # adding origin to plot for analysis
-
-
-def plot_eigenvector(second, third):
-    """
-    Creates 2 plots (one for 2nd eigvec, one for 3rd eigvec)
-        x-axis: vertex index
-        y-axis: coordinate of vertex in the second/third eigenvector
-
-    Input: 2 eigenvectors
-    Output: shows the plots as described, one at a time
-    """
-    indices = [i for i in range(len(second))] # makes list of vertex indices (0 to n)
-    x = indices
-
-    # 1st figure: 2nd eigenvector
-    plt.figure(figsize=(8, 6))
-    plt.title("Non-uniform random graph, second eigenvector")
-    plt.plot(x, second, color='b', marker='o', markersize=3, linestyle='-') # the points are connected with lines. You can change display parameteres here.
-    plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5) # grid properties
-
-    plt.tight_layout()
-    plt.show()
-
-    #2nd figure: 3rd eigenvector. Same functions as above.
-    plt.figure(figsize=(8, 6))
-    plt.title("Non-uniform random graph, third eigenvector")
-    plt.plot(x, third, color='r', marker='o', markersize=3, linestyle='-')
-    plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
-
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_unscaled_eigenvectors(nx_graph, type = "lap"):
-    """
-    Directly plots the 2d-embedding of a networkx graph according to laplacian or adjacency eigenvalues.
-    (Combines all the functions I defined above!)
-
-    Input: a networkx graph nx_graph; an eigenvector type "lap" or "adj"
-    Output: plots the embedding of the eigenvectors
-    """
-    if type == "adj":
-        vectors = (nx_graph.graph['second_adj'], nx_graph.graph['third_adj'])
-    elif type == "lap":
-        vectors = (nx_graph.graph['second_lap'], nx_graph.graph['third_lap'])
-    else:
-        print('Invalid type for plot_unscaled_eigenvectors')
-        return
-    plot_unscaled_coordinates(vectors)
+# GENERATING VERTICES TOOL FUNCTIONS --------------------------
 
 def angles_to_dictionary(angles, order):
     """
@@ -445,32 +328,9 @@ def non_uniform_angles_2(n):
                 angles[i] += 3*np.pi / 2
     return angles_to_dictionary(angles, n)
 
-def vertex_histogram(dictionary):
-    """
-    Plots a histogram visualising how many vertices are in each quadrant of the circular graph.
-    Mostly used to check my random distribution functions for defining the set of vertices was working correctly.
-    Not very interesting otherwise.
 
-    Input: dictionary, like the ones returned by angles_to_dictionary
-    Output: shows a histogram plot visualising how many vertices are in each quadrant
-    """
-    quadrant_counts = [0, 0, 0, 0]  # Counts for each quadrant
-    #counting quadrant elements
-    for angle in dictionary.values():
-        if 0 <= angle < np.pi / 2:
-            quadrant_counts[0] += 1
-        elif np.pi / 2 <= angle < np.pi:
-            quadrant_counts[1] += 1
-        elif np.pi <= angle < 3 * np.pi / 2:
-            quadrant_counts[2] += 1
-        else:
-            quadrant_counts[3] += 1
-    labels = ['Quadrant 1', 'Quadrant 2', 'Quadrant 3', 'Quadrant 4']
-    plt.bar(labels, quadrant_counts, color='skyblue')
-    plt.title('Distribution of Vertices in Different Quadrants')
-    plt.xlabel('Quadrant')
-    plt.ylabel('Number of Vertices')
-    plt.show()
+
+# GENERATE RANDOM GRAPHS ----------------------------
 
 def random_graph_unit_circle(order = 600, threshold = 25, p = 1, q = 0, likelihood = 2):
     """
@@ -545,6 +405,62 @@ def nearest_neighbours(order, neighbours):
 
     return G
 
+# previously cry.generate_graph(n)
+def ideal_circulant_denseQ1(n):
+    """
+    Function used to generate ideal circulant graphs with exactly twice as many vertices in 1st quadrant (not random).
+
+    Args:
+        n: order of generated graph
+
+    Returns: networkx graph of the model described above
+    """
+    G = nx.Graph() # create empty graph
+    num_circulant = n//5*2 # number of vertices in 1st quadrant
+    k = 2  # Number of closest neighbors on each side
+    G.add_nodes_from([i for i in range(n)])
+    # below: adding edges at the boundary between 1st quadrant and rest of graph
+    G.add_edge(0, 1)
+    G.add_edge(0,2)
+    G.add_edge(1,3)
+    G.add_edge(1, 2)
+    for i in range(2,num_circulant-2): # adding all the other edges in 1st quadrant
+        G.add_edge(i, (i + 1))  # Add edge to the right
+        G.add_edge(i, (i - 1))  # Add edge to the left
+        G.add_edge(i, (i - 2))  # Add edge to the left
+        G.add_edge(i, (i + 2))  # Add edge to the left
+    G.add_edge(num_circulant-2,num_circulant-1)
+
+    for i in range(num_circulant,n-1): # adding edges to rest of graph
+        G.add_edge(i, (i + 1))  # Add edge to the next vertex
+        G.add_edge(i, (i - 1)) # Add edge to the previous vertex
+    G.add_edge(n-1,0)
+    fun.add_eigenvectors(G, 0, 1)
+
+    return G
+
+# previously rem.simulate(n,d,p)
+def removing_random_edges(n: int = 1000, d: int = 20, p:float = 0.6):
+    """
+    Function defined to generate graphs in which we remove edges from perfect circulant graphs (like in the Richter Rocha paper).
+
+    Defining parameters of graph:
+    d = 20  number of nearest neighbours every vertex is connected to (per side)
+    n = 1000 order of graph
+    p = 0.6 probability two vertices that are neighbours in original circulant graph will be connected in derived random graph
+    """
+    G = nx.circulant_graph(n, [i for i in range(d)]) # standard networkx function for generating circulant graph
+    print(G)
+    H = G.copy() # creating copy of graph
+    for u,v in G.edges: # iterating over every edge in graph
+        if np.random.uniform(0, 1) < 1 - p: # removing edges uniformly with probability 1 -p
+            H.remove_edge(u,v)
+    print(H)
+    return H # return final random graph
+
+
+# PLOTTING ------------------------------
+
 def plot_graph_unit_circle(nx_graph, title="Random Graph on Unit Circle"):
     """
     Plots graph with vertices on the unit circle. Used for graphs of low order to visualise the edge connections along the circle.
@@ -596,8 +512,169 @@ def plot_degree_distribution(nx_graph):
 
     return average_degree
 
+def vertex_histogram(dictionary):
+    """
+    Plots a histogram visualising how many vertices are in each quadrant of the circular graph.
+    Mostly used to check my random distribution functions for defining the set of vertices was working correctly.
+    Not very interesting otherwise.
+
+    Input: dictionary, like the ones returned by angles_to_dictionary
+    Output: shows a histogram plot visualising how many vertices are in each quadrant
+    """
+    quadrant_counts = [0, 0, 0, 0]  # Counts for each quadrant
+    #counting quadrant elements
+    for angle in dictionary.values():
+        if 0 <= angle < np.pi / 2:
+            quadrant_counts[0] += 1
+        elif np.pi / 2 <= angle < np.pi:
+            quadrant_counts[1] += 1
+        elif np.pi <= angle < 3 * np.pi / 2:
+            quadrant_counts[2] += 1
+        else:
+            quadrant_counts[3] += 1
+    labels = ['Quadrant 1', 'Quadrant 2', 'Quadrant 3', 'Quadrant 4']
+    plt.bar(labels, quadrant_counts, color='skyblue')
+    plt.title('Distribution of Vertices in Different Quadrants')
+    plt.xlabel('Quadrant')
+    plt.ylabel('Number of Vertices')
+    plt.show()
+
+def plot_unscaled_coordinates(coordinates):
+    """
+    Plots 2 vectors (with x and y coordinates, respectively) in the 2d-plane.
+    Used to visualise the embedding of the 2nd and 3rd eigenvectors (or any 2 eigenvectors, for that matter.)
+
+    Input: 2 vectors of coordinates (can input eigenvectors directly)
+    Output: draws the emebdding
+    """
+    x, y = coordinates
+    plt.figure(figsize=(8, 8))  # Ensure square figure
+
+    # this part below is for labelling the vertices in the plot, if interested
+    # I used it for particularly large graphs to track, for example, every 1000th vertex (to see where the quadrant fall)
+    # uncomment to use :)
+    """
+    for i, (xi, yi) in enumerate(zip(x, y), start=1): # Start labeling from 1
+        if (i == 1) or (i % 1000 == 0): # i % 1000 == 0 says we visualize every 1000th vertex. You can modify this by changing the value after %.
+            plt.text(xi, yi, str(i), fontsize=10, ha='right', va='bottom', color='black') # choosing text display options (look up plt.text if needed)
+    """
+
+    # Add labels and title
+    plt.title("Model embedding", fontsize = 19) # can edit properties of title
+    split_idx = int(len(x) * 2 / 5) # splitting points into 1st quadrant (2/5 of all vertices) and the rest of the graph
+
+    # Scatter first 2/5 of the points in red
+    plt.scatter(x[:split_idx], y[:split_idx], s=10, color='red', label="First quadrant")
+
+    # Scatter the remaining points in blue
+    plt.scatter(x[split_idx:], y[split_idx:], s=10, color='blue', label="Remaining vertices")
+
+    x_lim = max(abs(min(x)), abs(max(x)))  # Maximum absolute x value
+    y_lim = max(abs(min(y)), abs(max(y)))  # Maximum absolute y value
+
+    # Ensure equal aspect ratio and scaling
+    plt.axis('equal')  # Better than 'equal' for auto-adjusting limits
+    plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5) # parameters of grid
+    plt.legend(fontsize = 14, loc = "upper left") # legend
+    plt.scatter(0, 0, color="black", label="(0, 0)", zorder=0.4) # adding origin to plot for analysis
 
 
+def plot_eigenvector(second, third):
+    """
+    Creates 2 plots (one for 2nd eigvec, one for 3rd eigvec)
+        x-axis: vertex index
+        y-axis: coordinate of vertex in the second/third eigenvector
+
+    Input: 2 eigenvectors
+    Output: shows the plots as described, one at a time
+    """
+    indices = [i for i in range(len(second))] # makes list of vertex indices (0 to n)
+    x = indices
+
+    # 1st figure: 2nd eigenvector
+    plt.figure(figsize=(8, 6))
+    plt.title("Non-uniform random graph, second eigenvector")
+    plt.plot(x, second, color='b', marker='o', markersize=3, linestyle='-') # the points are connected with lines. You can change display parameteres here.
+    plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5) # grid properties
+
+    plt.tight_layout()
+    plt.show()
+
+    #2nd figure: 3rd eigenvector. Same functions as above.
+    plt.figure(figsize=(8, 6))
+    plt.title("Non-uniform random graph, third eigenvector")
+    plt.plot(x, third, color='r', marker='o', markersize=3, linestyle='-')
+    plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_unscaled_eigenvectors(nx_graph, type = "lap"):
+    """
+    Directly plots the 2d-embedding of a networkx graph according to laplacian or adjacency eigenvalues.
+    (Combines all the functions I defined above!)
+
+    Input: a networkx graph nx_graph; an eigenvector type "lap" or "adj"
+    Output: plots the embedding of the eigenvectors
+    """
+    if type == "adj":
+        vectors = (nx_graph.graph['second_adj'], nx_graph.graph['third_adj'])
+    elif type == "lap":
+        vectors = (nx_graph.graph['second_lap'], nx_graph.graph['third_lap'])
+    else:
+        print('Invalid type for plot_unscaled_eigenvectors')
+        return
+    plot_unscaled_coordinates(vectors)
+
+def plot_distances(distances):
+    """
+    plot_distances creates a plot of the distance of points from the origin
+
+    Input: list of distances of vertices (not necessarily in increasing order)
+    Output: creates plot of graph such that
+                x-axis: vertex index
+                y-axis: distance from origin
+    """
+    indices = np.arange(len(distances))
+
+    plt.figure(figsize=(8, 5)) # figure size
+    plt.plot(indices, distances, marker='o', linestyle='-', label="Distances") # creates plot
+    plt.title("Distances from Origin")
+    plt.xlabel("Index")
+    plt.ylabel("Distance")
+    plt.ylim(0, max(distances) * 1.1)  # Ensures the y-axis starts from 0
+    plt.grid(True) # can change grid properties here
+    plt.legend()
+    plt.show()
+
+
+
+"""
+
+Old version of a function used to calculate how many inversions were in each quadrant of the graph. Not sure if it works anymore.
+Feel free to use as a starting point if needed.
+
+def plot_inversions(nx_graph):
+    second, third = get_eigenvectors(nx_graph)
+    rads, _ = eigenvector_radial_angles((second, third))
+    _, inversions = count_wrong_positions(rads)
+    order = nx_graph.order()
+    n = len(inversions)
+    q = order/5
+    bins = [0, q, 2*q, 3*q, 4*q, order]  # Adjust the bins as needed
+
+    # Plot the histogram
+    plt.hist(inversions, bins=bins, edgecolor='black', alpha=0.7)
+
+    # Add labels and title
+    plt.xlabel('Ranges')
+    plt.ylabel('Count')
+    plt.title('Number Distribution Across Ranges')
+
+    # Show the plot
+    plt.show()
+"""
 
 
 
