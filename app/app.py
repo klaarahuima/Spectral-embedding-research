@@ -10,7 +10,12 @@ external_stylesheets = [
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap'
 ]
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+# 1. ADDED VIEWPORT META TAG FOR MOBILE DEVICES
+app = dash.Dash(
+    __name__, 
+    external_stylesheets=external_stylesheets,
+    meta_tags=[{'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0'}]
+)
 app.title = "Circulant Graph Embedding"
 server = app.server
 
@@ -53,7 +58,7 @@ app.layout = html.Div([
             "An interactive demo | ",
             html.A("View project on GitHub", 
                    href="YOUR_GITHUB_LINK_HERE",  # <-- Replace with your actual GitHub URL
-                   target="_blank",               # Opens the link in a new tab
+                   target="_blank",
                    style={'color': '#3182ce', 'textDecoration': 'none', 'fontWeight': '600'})
         ], style={'textAlign': 'center', 'color': '#718096', 'fontSize': '18px', 'marginTop': '0'})
     ], style={'padding': '40px 20px 20px'}),
@@ -63,56 +68,62 @@ app.layout = html.Div([
         # Introduction Paragraph
         html.Div([
             html.H3("Research Overview", style={'marginTop': '0', 'color': '#2d3748'}),
-            html.P("We can embed graphs in 2 dimensions by using the coordinates of their 2nd and 3rd Laplacian eigenvectors. "
-                   "The 2D embedding of a perfect circulant graph forms a smooth circle where the vertices perfectly retain their original cyclic ordering. "
-                   "This research studied the effect of random perturbations on the Laplacian embedding of circulant graphs. "
-                   "Below, you can explore these effects interactively by introducing a denser first quadrant (the vertices in the first quadrant have more neighbors than the rest of the graph) or varying the probability that we remove any given edge from the graph. "
-                   "As the layout is perturbed, the original circular ordering of the vertices is lost.", 
+            html.P("We can embed graphs in 2 dimensions by using of their 2nd and 3rd Laplacian eigenvectors. "
+                   "The embedding of a circulant graph forms a smooth circle where the vertices perfectly retain their original cyclic ordering. "
+                   "This research studied the effect of random perturbations on the Laplacian embedding of circulant graphs. ",
                    style=TEXT_STYLE),
+
+            html.P("Below, you can explore these effects interactively by introducing a denser first quadrant (the vertices in the first quadrant have more neighbors than the rest of the graph) or varying the probability that we remove any given edge from the graph. "
+                               "As the layout is perturbed, the original circular ordering of the vertices is lost.", 
+                               style=TEXT_STYLE),
         ], style={**CARD_STYLE, 'borderLeft': '5px solid #3182ce'}),
 
-        # Control Panel
+        # Control Panel (UPDATED FOR RESPONSIVENESS)
         html.Div([
             html.Div([
                 html.Label("Graph size (n)", style=LABEL_STYLE),
-                dcc.Slider(id='n-slider', min=20, max=50, step=5, value=DEFAULT_N, 
+                dcc.Slider(id='n-slider', min=10, max=50, step=5, value=DEFAULT_N, 
                            marks={i: str(i) for i in range(10, 51, 10)},
                            tooltip={"placement": "bottom", "always_visible": False}),
-            ], style={'flex': '1', 'paddingRight': '20px'}),
+            ], style={'flex': '1 1 200px', 'minWidth': '200px'}),
             
             html.Div([
                 html.Label("Number of neighbors", style=LABEL_STYLE),
                 dcc.Slider(id='k-slider', min=1, max=8, step=1, value=DEFAULT_K, 
                            marks={i: str(i) for i in range(1, 9)}),
-            ], style={'flex': '1', 'paddingRight': '20px'}),
+            ], style={'flex': '1 1 200px', 'minWidth': '200px'}),
 
             html.Div([
                 html.Label("Additional neighbors in Q1", style=LABEL_STYLE),
                 dcc.Slider(id='q1-extra-slider', min=0, max=8, step=1, value=DEFAULT_Q1_EXTRA, 
                            marks={i: str(i) for i in range(0, 9, 1)}),
-            ], style={'flex': '1', 'paddingRight': '20px'}),
+            ], style={'flex': '1 1 200px', 'minWidth': '200px'}),
             
             html.Div([
                 html.Label("Edge removal probability", style=LABEL_STYLE),
                 dcc.Slider(id='p-slider', min=0.0, max=1.0, step=0.05, value=DEFAULT_P, 
                            marks={i/10: str(i/10) for i in range(0, 11, 2)}),
-            ], style={'flex': '1'})
+            ], style={'flex': '1 1 200px', 'minWidth': '200px'})
             
-        ], style={**CARD_STYLE, 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'space-between'})
+        ], style={**CARD_STYLE, 'display': 'flex', 'flexWrap': 'wrap', 'gap': '30px'})
     ]),
 
-    # ---------------- VISUALIZATIONS ----------------
+    # ---------------- VISUALIZATIONS (UPDATED FOR RESPONSIVENESS) ----------------
     html.Div([
+        # Left Side: Network Topology
         # Left Side: Network Topology
         html.Div([
             html.Div([
                 html.H3("Graph structure", style={'marginTop': '0', 'color': '#2d3748', 'textAlign': 'center'}),
-                dcc.Graph(id='static-graph', config={'staticPlot': True}, style={'height': '550px'}),
+                
+                # --- UPDATE THIS LINE BELOW ---
+                dcc.Graph(id='static-graph', config={'staticPlot': True}, style={'width': '100%', 'aspectRatio': '1', 'maxHeight': '550px', 'margin': 'auto'}),
+                
                 html.P("The generated graph visualized on a unit circle. The first quadrant (Q1) is highlighted with orange diamond markers. "
                        "If additional neighbors are added, there'll be a higher concentration of edges in this region.", 
                        style={**TEXT_STYLE, 'marginTop': '15px'})
             ], style=CARD_STYLE)
-        ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+        ], style={'flex': '1 1 45%', 'minWidth': '300px'}),
         
         # Right Side: Embeddings & Eigenvectors
         html.Div([
@@ -120,10 +131,11 @@ app.layout = html.Div([
                 html.H3("2D Spectral Embedding", style={'marginTop': '0', 'color': '#2d3748', 'textAlign': 'center'}),
                 dcc.Graph(id='embedding-plot', style={'height': '380px'}),
                 html.P("Plotted using the 2nd and 3rd Laplacian eigenvectors. The node colors follow a rainbow gradient based on their original cyclic order. "
-                                       "Adding dense regions or randomly removing edges modifies the layout, losing the perfect circular structure. ",
-                                       style={**TEXT_STYLE, 'marginTop': '15px'}),
-                html.P("If the layout is no longer circular at all, your graph is either disconnected or you have too many edges. Try changing your parameters.", 
-                                       style={**TEXT_STYLE, 'marginTop': '5px'})
+                       "Adding dense regions or randomly removing edges modifies the layout, losing the perfect circular structure. ",
+                       style ={**TEXT_STYLE, 'marginTop' : '15px'}),
+                html.P(
+                       "If the layout is no longer circular at all, your graph is likely disconnected. Try changing your parameters.", 
+                       style={**TEXT_STYLE, 'marginTop': '15px'})
             ], style=CARD_STYLE),
 
             html.Div([
@@ -134,8 +146,10 @@ app.layout = html.Div([
                        "while creating denser regions results in eigenvectors resembling combinations of two sinusoidal waves (with different parameters) patched together.", 
                        style={**TEXT_STYLE, 'marginTop': '15px'}) 
             ], style=CARD_STYLE)
-        ], style={'width': '50%', 'display': 'inline-block', 'verticalAlign': 'top', 'float': 'right'})
-    ])
+        ], style={'flex': '1 1 45%', 'minWidth': '300px'})
+        
+    ], style={'display': 'flex', 'flexWrap': 'wrap-reverse', 'gap': '20px'})
+    
 ], style={'fontFamily': "'Inter', sans-serif", 'maxWidth': '1350px', 'margin': 'auto', 'backgroundColor': '#f7fafc', 'padding': '20px'})
 
 
@@ -207,7 +221,9 @@ def update_dashboard(n, k, q1_extra, p):
         text=[f"Node {i}" for i in range(n)], hoverinfo='text'
     ))
     static_fig.update_layout(
-        showlegend=False, xaxis=dict(visible=False), yaxis=dict(visible=False), 
+        showlegend=False, 
+        xaxis=dict(visible=False), 
+        yaxis=dict(visible=False, scaleanchor="x", scaleratio=1), # <-- Added scale anchor here
         template='plotly_white', margin=dict(l=10, r=10, t=20, b=10),
         plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)'
     )
@@ -221,19 +237,30 @@ def update_dashboard(n, k, q1_extra, p):
         marker=dict(
             symbol=marker_symbols, color=list(range(n)),
             colorscale='Rainbow', showscale=True, 
-            colorbar=dict(title=dict(text='Node Index', font=dict(family='Inter')), thickness=15),
+            colorbar=dict(
+                title=dict(text='Node Index', font=dict(family='Inter')), 
+                thickness=6,
+                orientation='h', 
+                y=-0.3           
+            ),
             line=dict(color='#2d3748')
         ),
         text=[f"Node {i}" for i in range(n)],
         hovertemplate="<b>Node %{text}</b><br>2nd Eig: %{x:.4f}<br>3rd Eig: %{y:.4f}<extra></extra>"
     ))
     embedding_fig.update_layout(
-        margin=dict(l=10, r=10, t=20, b=30), template='plotly_white',
-        xaxis_title='2nd Eigenvector', yaxis_title='3rd Eigenvector',
-        font=dict(family='Inter', color='#4a5568'),
+        margin=dict(l=10, r=10, t=20, b=80), # Slightly reduced bottom margin
+        template='plotly_white',
+        font=dict(family='Inter', color='#4a5568', size=11), # Smaller global text
         plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-        yaxis=dict(scaleanchor="x", scaleratio=1, gridcolor='#edf2f7'),
-        xaxis=dict(gridcolor='#edf2f7')
+        yaxis=dict(
+            title=dict(text='3rd Eigenvector', font=dict(size=12), standoff=1), # Smaller title, pulled closer to axis
+            scaleanchor="x", scaleratio=1, gridcolor='#edf2f7'
+        ),
+        xaxis=dict(
+            title=dict(text='2nd Eigenvector', font=dict(size=12), standoff=5),
+            gridcolor='#edf2f7'
+        )
     )
                                 
     # 5. 1D Eigenvector Figure
@@ -241,12 +268,19 @@ def update_dashboard(n, k, q1_extra, p):
     eigen_fig.add_trace(go.Scatter(x=list(range(n)), y=vec2, mode='lines+markers', name='2nd Eig', line=dict(color='#3182ce', width=2), marker=dict(size=5)))
     eigen_fig.add_trace(go.Scatter(x=list(range(n)), y=vec3, mode='lines+markers', name='3rd Eig', line=dict(color='#e53e3e', width=2), marker=dict(size=5)))
     eigen_fig.update_layout(
-        margin=dict(l=10, r=10, t=10, b=30), template='plotly_white',
-        xaxis_title='Original Node Index', yaxis_title='Coordinate Value',
-        font=dict(family='Inter', color='#4a5568'),
+        margin=dict(l=10, r=10, t=10, b=30), 
+        template='plotly_white',
+        font=dict(family='Inter', color='#4a5568', size=11),
         plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        yaxis=dict(gridcolor='#edf2f7'), xaxis=dict(gridcolor='#edf2f7')
+        yaxis=dict(
+            title=dict(text='Coordinate', font=dict(size=12), standoff=1),
+            gridcolor='#edf2f7'
+        ),
+        xaxis=dict(
+            title=dict(text='Node Index', font=dict(size=12), standoff=5),
+            gridcolor='#edf2f7'
+        )
     )
                             
     return static_fig, embedding_fig, eigen_fig
