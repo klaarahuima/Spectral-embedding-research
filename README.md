@@ -3,7 +3,7 @@
 Python code for a research project on how well the **Laplacian spectral embedding** (2nd and 3rd eigenvectors) of a graph recovers the circular structure it was built from, when that structure is perturbed at random.
 
 Bachelor thesis project, École Polytechnique, carried out at Dalhousie University (spring 2025) under the supervision of Prof. Jeannette Janssen.
-[Report (PDF)](#) · [Interactive demo](#) · [Author: Klaara Huima](https://github.com/klaarahuima)
+[Interactive demo](https://spectral-embedding-research.onrender.com) · [Author: Klaara Huima](https://klaarahuima.github.io)
 
 ## The goal
 
